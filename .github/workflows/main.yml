@@ -1,0 +1,49 @@
+# .github/workflows/build-caddy.yml
+name: Build Minimal Caddy
+
+on:
+  workflow_dispatch:  # 允许手动触发
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goarch: [amd64, arm64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU (for ARM64 cross-build)
+        if: matrix.goarch == 'arm64'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/arm64
+
+      - name: Build Caddy with xcaddy
+        run: |
+          ARCH=${{ matrix.goarch }}
+          OUTPUT=caddy-linux-${ARCH}
+          echo "Building for linux/${ARCH} -> ${OUTPUT}"
+
+          docker run --platform linux/${ARCH} \
+            -v "$(pwd):/src" \
+            -w /src \
+            caddy/xcaddy:latest \
+            build \
+            --output "${OUTPUT}" \
+            --with github.com/caddyserver/caddy/v2/module/caddyhttp \
+            --with github.com/caddyserver/caddy/v2/modules/caddyhttp/fileserver
+
+      - name: Verify binary
+        run: |
+          file ./caddy-linux-${{ matrix.goarch }}
+          chmod +x ./caddy-linux-${{ matrix.goarch }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: caddy-linux-${{ matrix.goarch }}
+          path: ./caddy-linux-${{ matrix.goarch }}
