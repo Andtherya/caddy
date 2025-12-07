@@ -1,5 +1,5 @@
-# .github/workflows/build-caddy.yml
-name: Build Minimal Caddy for Linux (amd64 & arm64)
+# .github/workflows/build-caddy-amd64.yml
+name: Build Caddy for Linux AMD64
 
 on:
   workflow_dispatch:  # 允许手动触发
@@ -9,28 +9,18 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        goarch: [amd64, arm64]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up QEMU for cross-platform builds (ARM64)
-        if: matrix.goarch == 'arm64'
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: linux/arm64
-
-      - name: Build Caddy binary with xcaddy
+      - name: Build Caddy binary (Linux AMD64)
         env:
-          XCADDY_VERSION: "2.8.4"  # 可根据 https://hub.docker.com/r/caddy/xcaddy/tags 更新
+          XCADDY_VERSION: "2.8.4"  # 可替换为最新版，如 2.9.0
         run: |
-          ARCH=${{ matrix.goarch }}
-          OUTPUT="caddy-linux-${ARCH}"
-          echo "Building Caddy ${XCADDY_VERSION} for linux/${ARCH} → ${OUTPUT}"
+          OUTPUT="caddy-linux-amd64"
+          echo "Building Caddy ${XCADDY_VERSION} for linux/amd64 → ${OUTPUT}"
 
-          docker run --platform linux/${ARCH} \
+          docker run --platform linux/amd64 \
             -v "$(pwd):/src" \
             -w /src \
             caddy/xcaddy:${XCADDY_VERSION} \
@@ -39,14 +29,14 @@ jobs:
             --with github.com/caddyserver/caddy/v2/module/caddyhttp \
             --with github.com/caddyserver/caddy/v2/modules/caddyhttp/fileserver
 
-      - name: Make binary executable and verify
+      - name: Make executable and verify
         run: |
-          chmod +x ./caddy-linux-${{ matrix.goarch }}
-          file ./caddy-linux-${{ matrix.goarch }}
+          chmod +x ./caddy-linux-amd64
+          file ./caddy-linux-amd64
+          ls -lh ./caddy-linux-amd64
 
-      - name: Upload binary as artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: caddy-linux-${{ matrix.goarch }}
-          path: ./caddy-linux-${{ matrix.goarch }}
-          if-no-files-found: error
+          name: caddy-linux-amd64
+          path: ./caddy-linux-amd64
